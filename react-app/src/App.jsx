@@ -4,6 +4,7 @@ import Header from './components/header'
 import SearchBar from './components/search'
 import { useState, useEffect } from 'react'
 import Loader from './components/loader'
+import { useDebounce } from 'react-use'
 
 const API_BASE_URL = 'https://api.themoviedb.org/3';
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
@@ -20,12 +21,16 @@ const App = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [movieList, setMovieList] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
-  const fetchMovies = async () => {
+  useDebounce(() => setDebouncedSearchTerm(searchTerm), 500, [searchTerm]);
+  
+  const fetchMovies = async (query = '') => {
     setIsLoading(true);
     setErrorMessage('');
     try {
-      const response = await fetch(`${API_BASE_URL}/discover/movie?sort_by=popularity.desc`, API_OPTIONS);
+      const endpoints = query ? `${API_BASE_URL}/search/movie?query=${encodeURIComponent(query)}`: `${API_BASE_URL}/discover/movie?sort_by=popularity.desc`
+      const response = await fetch(endpoints, API_OPTIONS);
       console.log('API Response:', response);
 
       if (!response.ok) {
@@ -44,7 +49,6 @@ const App = () => {
 
     }
     catch (error) {
-      console.error('Error fetching movies:', error);
       setErrorMessage('Error fetching movies. Please try again.');
     } finally {
       setIsLoading(false);
@@ -52,10 +56,8 @@ const App = () => {
   }
 
   useEffect(() => {
-
-
-    fetchMovies();
-  }, [searchTerm]);
+    fetchMovies(debouncedSearchterm);
+  }, [debouncedSearchTerm]);
 
   return (
     <main className='p-4 bg-gray-900 min-h-screen text-white flex flex-col items-center relative gap-4'>
@@ -68,22 +70,21 @@ const App = () => {
         </header>
       </div>
 
-      <section className='flex flex-col items-center w-full'>
-
-        <h2 className='mt-[20px] text-3xl font-bold'>All movies</h2>
+      <section className='w-full'>
+        <h2 className='mb-[20px] text-3xl font-bold'>All movies</h2>
 
         {isLoading ? (
           <Loader />
         ) : errorMessage ? (
           <p className='text-red-500'>{errorMessage}</p>
         ) : (
-          <ul>
+          <ul className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5'>
             {movieList.map((movie) => (
-              <p key={movie.id}>{movie.title}</p>
+              <li key={movie.id}>
+                <Card movie={movie} />
+              </li>
             ))}
           </ul>
-
-
         )}
       </section>
 
